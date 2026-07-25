@@ -1,0 +1,29 @@
+# Standalone-harness fixture, trimmed for cheap debugging of the Phase 1
+# pipeline (plans/online-data-science-agent.md §6.5/§7 Phase 1) — NOT the
+# full 16-question analysis_4 case yet. Only the primary question is
+# included here so a debug run costs a handful of tool calls, not dozens.
+# The full question set lives in sample_data/analysis_4/research_questions.txt
+# and should become its own (more expensive) case once the pipeline is
+# confirmed working end to end.
+name: analysis_4_primary_only
+dataset_path: sample_data/analysis_4/data/Tabelle Doktorarbeit (2026) .xlsx
+# Used by the production-fidelity harness (eval/browser_harness.py, plan
+# §6.2 tier 2 / §7 Phase 9) instead of dataset_path above. Same data,
+# converted to CSV — NOT an arbitrary substitution: Phase 9 verified live
+# that Pyodide v0.28.0 has no prebuilt `openpyxl` (pandas' .xlsx engine),
+# so `pd.read_excel()` fails in the actual browser sandbox today
+# (`ImportError: Missing optional dependency 'openpyxl'`), even though
+# `micropip.install('openpyxl')` DOES work if called directly — our
+# run_python worker's `_bench_run` uses plain sync `exec()`, which can't
+# run the `await micropip.install(...)` an agent would need. This is a
+# real, still-open gap (see plan §8), not fixed here — this field is the
+# pragmatic way to still get a meaningful browser-tier score for the
+# *prompt/execution* regression check this phase otherwise exists to run.
+browser_dataset_path: eval/cases/analysis_4/data.csv
+reference_report_path: sample_data/analysis_4/outcome/report.md
+notes: >
+  Real dataset, one real (trimmed) question. R is the original reference
+  implementation's language (lme4/lmerTest/emmeans), but this environment
+  has no Rscript installed, so the debug run only exercises run_python —
+  a live instance of the webR-availability risk flagged in the plan's §8,
+  just for native R instead of webR.

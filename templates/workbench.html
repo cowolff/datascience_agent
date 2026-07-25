@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bench — Workbench</title>
+<!-- Applies the "dark" class before first paint so a dark-OS/dark-saved
+     user never sees a light flash — theme.js (loaded later as a deferred
+     module) duplicates this logic to keep it in sync afterward. Keep the
+     storage key and fallback logic identical to theme.js's getTheme(). -->
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("bench.theme.v1");
+      var dark = stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch (e) {}
+  })();
+</script>
+<!-- TEMPORARY: Tailwind's CDN build (dev-only per Tailwind's own docs).
+     Phase 2 locked the production build to the standalone Tailwind CLI
+     compiled at image-build time (plan §3.1/§4) — swap this for a compiled
+     /static/css/style.css before this is ever deployed. Tracked as a
+     Phase-3 follow-up, not forgotten. -->
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+<script>
+  tailwind.config = { darkMode: "class" };
+</script>
+<!-- Tells the browser to render native form controls (radio buttons,
+     checkboxes, scrollbars, ...) in their dark variant whenever <html> has
+     the "dark" class — otherwise they stay light-styled regardless of our
+     class-based dark mode, since that's a CSS-only browser behavior. -->
+<style>
+  html.dark { color-scheme: dark; }
+</style>
+</head>
+<body class="h-screen overflow-hidden bg-slate-50 text-slate-900 text-sm dark:bg-slate-900 dark:text-slate-100">
+{% include "_tos_modal.html" %}
+<div class="h-full flex flex-col">
+
+  <header class="h-14 shrink-0 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 bg-white dark:bg-slate-800">
+    <div class="flex items-center gap-3 min-w-0">
+      <a href="/" title="Bench home" class="h-7 w-7 rounded-md bg-blue-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">B</a>
+      <div class="w-px h-5 bg-slate-200 dark:bg-slate-600"></div>
+      <span class="font-medium truncate">Bench</span>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <span id="python-status" class="hidden text-xs px-2.5 py-1 rounded-full border"></span>
+      <span id="r-status" class="hidden text-xs px-2.5 py-1 rounded-full border"></span>
+      <span class="hidden md:inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+        Runs in your browser — nothing uploaded
+      </span>
+      <button type="button" id="export-chat-btn" title="Download this conversation as JSON" disabled
+        class="hidden sm:inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed">
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export chat
+      </button>
+      <a href="/settings" id="provider-badge" class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600" title="Change provider in Settings">
+        <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+        <span id="provider-badge-label">Mistral · hosted proxy</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="flex-1 flex min-h-0">
+
+    {% include "_nav.html" %}
+
+    <aside class="w-64 shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-xs">
+      <p class="font-medium text-slate-700 dark:text-slate-200 mb-1">Datasets</p>
+      <p class="text-slate-500 dark:text-slate-400 leading-relaxed mb-3">Stored in this browser's
+      Origin Private File System — never sent to the backend. Manage masking
+      rules (which rows/columns/cells the model can see) on the
+      <a href="/datasets" class="text-blue-600 dark:text-blue-400 hover:underline">Datasets</a>
+      page — rules apply next time a dataset is (re)loaded into Python here.</p>
+
+      <label class="block w-full text-center cursor-pointer rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 px-2.5 py-2 mb-3 transition-colors">
+        Upload dataset
+        <input type="file" id="file-input" class="hidden" accept=".csv,.tsv,.json,.xlsx,.zip" />
+      </label>
+
+      <ul id="dataset-list" class="space-y-1.5"></ul>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0">
+      <div id="messages" class="flex-1 overflow-y-auto px-6 py-6 space-y-6 max-w-3xl w-full mx-auto"></div>
+
+      <div class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-3.5">
+        <form id="composer-form" class="max-w-3xl w-full mx-auto flex items-end gap-2 rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500/40">
+          <textarea
+            id="composer-input"
+            rows="1"
+            placeholder="Ask a question about your uploaded data… (Shift+Enter for a new line)"
+            class="flex-1 bg-transparent py-1 outline-none resize-none max-h-40 overflow-y-auto placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          ></textarea>
+          <button id="composer-send" type="submit" class="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0 disabled:opacity-50">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-8.31a1 1 0 0 0 0-1.8L3.4 1.98a1 1 0 0 0-1.4 1.06L4.4 12 2 20.96a1 1 0 0 0 1.4 1.06Z"/></svg>
+          </button>
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- PDF export (report-export.js). Loaded as a classic (non-module) script
+     because jsPDF's own ES module build imports bare specifiers
+     (@babel/runtime/...) that don't resolve from a CDN without a bundler
+     — confirmed live; only this self-contained UMD build works directly
+     here. It attaches window.jspdf.jsPDF, which report-export.js reads. -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js"></script>
+<script type="module" src="{{ url_for('static', filename='js/workbench.js') }}"></script>
+</body>
+</html>

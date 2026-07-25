@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bench — Datasets &amp; masking</title>
+<!-- Applies the "dark" class before first paint — see the identical
+     comment in workbench.html; keep in sync with theme.js's getTheme(). -->
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("bench.theme.v1");
+      var dark = stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch (e) {}
+  })();
+</script>
+<!-- TEMPORARY: see the same note in workbench.html — dev-only Tailwind CDN,
+     swap for the compiled standalone-CLI build before deploying. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: "class" };
+</script>
+<!-- See the identical comment in workbench.html — makes native form
+     controls (radio buttons, etc.) render dark-styled when <html> has
+     the "dark" class. -->
+<style>
+  html.dark { color-scheme: dark; }
+</style>
+</head>
+<body class="h-screen overflow-hidden bg-slate-50 text-slate-900 text-sm dark:bg-slate-900 dark:text-slate-100">
+{% include "_tos_modal.html" %}
+<div class="h-full flex flex-col">
+
+  <header class="h-14 shrink-0 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 bg-white dark:bg-slate-800">
+    <div class="flex items-center gap-3 min-w-0">
+      <a href="/" title="Bench home" class="h-7 w-7 rounded-md bg-blue-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">B</a>
+      <div class="w-px h-5 bg-slate-200 dark:bg-slate-600"></div>
+      <span class="font-medium truncate">Bench — Datasets &amp; masking (Phase 5)</span>
+    </div>
+    <span class="hidden md:inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+      Runs in your browser — nothing uploaded
+    </span>
+  </header>
+
+  <div class="flex-1 flex min-h-0">
+    {% include "_nav.html" %}
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="max-w-5xl mx-auto px-6 py-6">
+
+        <div class="flex items-center justify-between mb-4 gap-4">
+          <div class="min-w-0">
+            <select id="dataset-select" class="text-sm font-medium bg-transparent border-none focus:ring-0 p-0 pr-6"></select>
+            <p id="dataset-shape" class="text-xs text-slate-500 dark:text-slate-400"></p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span id="save-status" class="text-xs text-emerald-600 dark:text-emerald-400"></span>
+            <button id="save-mask-btn" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save masking rules</button>
+          </div>
+        </div>
+
+        <div class="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-5 text-xs text-blue-900 leading-relaxed dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+          Click a column header to hide the whole column, check a row to hide
+          it, or click an individual visible cell to hide just that value.
+          Hidden cells never reach the model in a tool result — your Python
+          code still computes on the real, unmasked data underneath. Rules
+          take effect the next time this dataset is (re)loaded into Python
+          from the <a href="/workbench" class="underline">Workbench</a>.
+        </div>
+
+        <p id="unsupported-message" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 dark:text-amber-300 dark:bg-amber-900/20 dark:border-amber-800"></p>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
+          <div id="grid-container" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-x-auto"></div>
+          <div id="mask-summary" class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module" src="{{ url_for('static', filename='js/datasets-page.js') }}"></script>
+</body>
+</html>

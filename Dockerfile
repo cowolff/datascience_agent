@@ -10,6 +10,21 @@ WORKDIR /app
 COPY --from=deps /install /usr/local
 COPY app.py ./
 COPY docker-entrypoint.sh ./
+# app.py imports agent.prompts, and Flask needs templates/ (Jinja2 pages)
+# and static/ (the client-side SPA — JS modules, Tailwind CDN build for
+# now) to serve anything at all beyond a bare import. Before this, the
+# image built and started but crashed immediately on `import agent.prompts`
+# — a stub-template leftover from before this became a real app, not
+# something the original bare Dockerfile had any reason to anticipate.
+#
+# TEMPORARY, like the Tailwind-CDN/Pyodide-CDN notes in the templates
+# themselves: this copies the frontend as-is (CDN-loaded Tailwind/Pyodide/
+# webR at runtime) rather than the vendored, build-time-compiled asset
+# pipeline plan §3.1/§4 describes for production — that asset-build stage
+# is still a pre-deploy TODO, tracked there and in the plan's Phase 10.
+COPY agent/ ./agent/
+COPY templates/ ./templates/
+COPY static/ ./static/
 RUN chmod +x docker-entrypoint.sh
 
 # An arbitrary non-root UID with no matching /etc/passwd entry has no

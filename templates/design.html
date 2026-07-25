@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bench — Design principles, priorities &amp; tools</title>
+<!-- Applies the "dark" class before first paint — see the identical
+     comment in workbench.html; keep in sync with theme.js's getTheme(). -->
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("bench.theme.v1");
+      var dark = stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch (e) {}
+  })();
+</script>
+<!-- TEMPORARY: see the same note in workbench.html — dev-only Tailwind CDN,
+     swap for the compiled standalone-CLI build before deploying. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: "class" };
+</script>
+<script type="module" src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<style>
+  .code-block { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .anchor-offset { scroll-margin-top: 4.5rem; }
+
+  /* Flow-diagram color roles — reuses the app's existing semantics
+     (emerald = "stays in your browser", the same hue as the "Runs in your
+     browser" trust badge elsewhere in the app; blue = brand accent /
+     the one thing that crosses the network; slate = neutral / external),
+     not a fresh categorical palette. Each zone is also text-labeled, so
+     color is never the only carrier of identity. Keyed off the app's
+     class-based dark mode (html.dark, toggled by theme.js / the anti-flash
+     script above) rather than prefers-color-scheme, so it follows the
+     user's Settings choice, not just their OS. */
+  .flow-root {
+    color-scheme: light;
+    --surface: #ffffff; --surface-inset: #f8fafc;
+    --text-primary: #0f172a; --text-secondary: #475569; --text-muted: #94a3b8;
+    --boundary: #059669; --boundary-fill: #ecfdf5;
+    --accent: #2563eb; --accent-fill: #eff6ff;
+    --neutral: #64748b; --neutral-fill: #f1f5f9;
+    --line: #cbd5e1;
+  }
+  html.dark .flow-root {
+    color-scheme: dark;
+    --surface: #1e293b; --surface-inset: #0f172a;
+    --text-primary: #f1f5f9; --text-secondary: #94a3b8; --text-muted: #64748b;
+    --boundary: #10b981; --boundary-fill: rgba(16, 185, 129, 0.08);
+    --accent: #3b82f6; --accent-fill: rgba(59, 130, 246, 0.1);
+    --neutral: #94a3b8; --neutral-fill: #334155;
+    --line: #475569;
+  }
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+
+  <!-- Marketing nav, same as the landing page -->
+  <header class="border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="{{ url_for('landing') }}" class="flex items-center gap-2.5">
+        <div class="h-7 w-7 rounded-md bg-blue-600 flex items-center justify-center text-white font-semibold text-xs">B</div>
+        <span class="font-medium">Bench</span>
+      </a>
+      <nav class="flex items-center gap-5 text-sm text-slate-600 dark:text-slate-400">
+        <a href="#architecture" class="hidden sm:inline hover:text-slate-900 dark:hover:text-white transition-colors">Architecture</a>
+        <a href="#principles" class="hidden sm:inline hover:text-slate-900 dark:hover:text-white transition-colors">Principles</a>
+        <a href="#priorities" class="hidden sm:inline hover:text-slate-900 dark:hover:text-white transition-colors">Priorities</a>
+        <a href="#tools" class="hidden sm:inline hover:text-slate-900 dark:hover:text-white transition-colors">Tools</a>
+        <a href="{{ url_for('workbench') }}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors">
+          Launch workbench
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m3-3h5m0 0v5m0-5L10 14"/></svg>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="max-w-5xl mx-auto px-6 py-14">
+
+    <div class="mb-16">
+      <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">under the hood</span>
+      <h1 class="text-3xl font-semibold tracking-tight mt-3 mb-3">Design principles, priorities &amp; tools</h1>
+      <p class="text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+        The constraints Bench is built to, the order they win in when they
+        pull against each other, and the full catalog of tools the agent can
+        call.
+      </p>
+    </div>
+
+    <!-- ============ ARCHITECTURE / DATA FLOW ============ -->
+    <section id="architecture" class="anchor-offset mb-20">
+      <h2 class="text-xl font-semibold tracking-tight mb-1.5">How data flows</h2>
+      <p class="text-sm text-slate-600 dark:text-slate-400 mb-7 max-w-2xl">Principle 2 as a picture: almost everything lives inside the browser. The only thing that ever crosses the network is masked chat text and a tool schema — never a file, a dataframe, or a raw cell value.</p>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 sm:p-7">
+        <div class="flow-root w-full overflow-x-auto">
+          <svg viewBox="0 0 960 500" class="w-full min-w-[720px]" style="height:auto" role="img"
+               aria-label="Diagram: your browser contains dataset files, masking rules, Pyodide and webR code execution, and the agent loop, all gated by a sanitize step. Only masked chat text and a tool schema cross the network boundary to a stateless Flask proxy, which forwards to the LLM provider. A separate bring-your-own or local-model path bypasses the proxy entirely.">
+            <defs>
+              <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 Z" fill="var(--accent)" />
+              </marker>
+              <marker id="arrow-neutral" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 Z" fill="var(--neutral)" />
+              </marker>
+            </defs>
+
+            <!-- Trust boundary: everything inside this box never leaves the browser -->
+            <rect x="24" y="24" width="520" height="440" rx="16" fill="var(--boundary-fill)" stroke="var(--boundary)" stroke-width="2" stroke-dasharray="7 5" />
+            <rect x="44" y="8" width="150" height="28" rx="14" fill="var(--boundary)" />
+            <text x="119" y="26" text-anchor="middle" fill="white" font-size="11" font-weight="600" letter-spacing="0.4">YOUR BROWSER</text>
+
+            <!-- Chip 1: dataset files -->
+            <rect x="56" y="64" width="456" height="58" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5" />
+            <g stroke="var(--text-secondary)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M76 78h14l6 6v18a1 1 0 0 1-1 1H76a1 1 0 0 1-1-1V79a1 1 0 0 1 1-1z" transform="translate(0,-2)" />
+            </g>
+            <text x="106" y="88" fill="var(--text-primary)" font-size="13" font-weight="600">Dataset files</text>
+            <text x="106" y="105" fill="var(--text-muted)" font-size="11">Stored in OPFS / IndexedDB — never uploaded</text>
+
+            <!-- Chip 2: masking -->
+            <rect x="56" y="132" width="456" height="58" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5" />
+            <g transform="translate(70,145)" stroke="var(--text-secondary)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 2l18 18M9.5 9.68a2 2 0 0 0 2.82 2.82M4.5 5.5C2.9 6.8 1.6 8.5.8 10c1.4 2.7 4.5 6 9.2 6 1.6 0 3-.4 4.2-1.1M8.9 3.6A8.7 8.7 0 0 1 10 3.5c4.5 0 7.6 3.5 9 6-.5 1-1.2 2.1-2.2 3.2" />
+            </g>
+            <text x="106" y="156" fill="var(--text-primary)" font-size="13" font-weight="600">Masking rules</text>
+            <text x="106" y="173" fill="var(--text-muted)" font-size="11">Rows / columns / cells you choose to hide</text>
+
+            <!-- Chip 3: execution -->
+            <rect x="56" y="200" width="456" height="58" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5" />
+            <g transform="translate(68,212)" stroke="var(--text-secondary)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 6 3 11l5 5m6-10 5 5-5 5M2 2h18v18H2z" />
+            </g>
+            <text x="106" y="224" fill="var(--text-primary)" font-size="13" font-weight="600">Pyodide (Python) &amp; webR (R)</text>
+            <text x="106" y="241" fill="var(--text-muted)" font-size="11">Real code execution, inside a Web Worker</text>
+
+            <!-- Chip 4: agent loop -->
+            <rect x="56" y="268" width="456" height="58" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5" />
+            <g transform="translate(70,280)" stroke="var(--text-secondary)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 2v6h6M18 18v-6h-6M2 8a8 8 0 0 1 13-6M18 12a8 8 0 0 1-13 6" />
+            </g>
+            <text x="106" y="292" fill="var(--text-primary)" font-size="13" font-weight="600">Agent loop</text>
+            <text x="106" y="309" fill="var(--text-muted)" font-size="11">Calls the model, dispatches tools — orchestrated here</text>
+
+            <text x="284" y="334" text-anchor="middle" fill="var(--text-muted)" font-size="15">&#8595;</text>
+
+            <!-- Chip 5: the sanitize() gate — the last thing before anything can leave -->
+            <rect x="56" y="336" width="456" height="58" rx="10" fill="var(--accent-fill)" stroke="var(--accent)" stroke-width="2" />
+            <g transform="translate(70,348)" stroke="var(--accent)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 1 2 4v6c0 5 3.3 8 8 9 4.7-1 8-4 8-9V4l-8-3Z M6.5 10 9 12.5l5-5" />
+            </g>
+            <text x="106" y="360" fill="var(--text-primary)" font-size="13" font-weight="700">sanitize()</text>
+            <text x="106" y="377" fill="var(--text-secondary)" font-size="11">Strips every masked value before anything is serialized</text>
+
+            <!-- Crossing arrow — the one thing that leaves the browser -->
+            <line x1="512" y1="365" x2="602" y2="365" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow-accent)" />
+            <circle cx="544" cy="365" r="11" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5" />
+            <g transform="translate(538,359)" stroke="var(--accent)" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 6.5V4.5a3.5 3.5 0 0 1 7 0v2M1.5 6.5h8v6h-8z" />
+            </g>
+            <text x="544" y="392" text-anchor="middle" fill="var(--text-muted)" font-size="10">trust boundary</text>
+            <text x="655" y="308" text-anchor="middle" fill="var(--text-muted)" font-size="10">Only this crosses the boundary:</text>
+            <text x="655" y="322" text-anchor="middle" fill="var(--accent)" font-size="11.5" font-weight="600">masked chat text + tool schema</text>
+
+            <!-- Server: stateless proxy -->
+            <rect x="612" y="336" width="170" height="58" rx="10" fill="var(--neutral-fill)" stroke="var(--neutral)" stroke-width="1.5" />
+            <text x="697" y="360" text-anchor="middle" fill="var(--text-primary)" font-size="12.5" font-weight="600">Flask proxy</text>
+            <text x="697" y="376" text-anchor="middle" fill="var(--text-muted)" font-size="10">Stateless — no body logging</text>
+
+            <!-- LLM provider — outside Bench's control -->
+            <line x1="782" y1="365" x2="796" y2="365" stroke="var(--neutral)" stroke-width="2" marker-end="url(#arrow-neutral)" />
+            <rect x="798" y="336" width="138" height="58" rx="10" fill="var(--surface)" stroke="var(--neutral)" stroke-width="1.5" stroke-dasharray="5 4" />
+            <text x="867" y="360" text-anchor="middle" fill="var(--text-primary)" font-size="12.5" font-weight="600">LLM provider</text>
+            <text x="867" y="376" text-anchor="middle" fill="var(--text-muted)" font-size="10">(e.g. Mistral, hosted)</text>
+
+            <!-- Bring-your-own / local model — bypasses the proxy entirely -->
+            <text x="774" y="418" text-anchor="middle" fill="var(--neutral)" font-size="10.5" font-weight="600">Bring-your-own / local model — full bypass</text>
+            <path d="M544 440 C 584 440, 584 452, 612 452" fill="none" stroke="var(--neutral)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow-neutral)" />
+            <rect x="612" y="424" width="324" height="56" rx="10" fill="var(--surface)" stroke="var(--neutral)" stroke-width="1.5" stroke-dasharray="5 4" />
+            <text x="774" y="447" text-anchor="middle" fill="var(--text-primary)" font-size="12.5" font-weight="600">Your own endpoint / local model</text>
+            <text x="774" y="463" text-anchor="middle" fill="var(--text-muted)" font-size="10">Settings → Custom — Bench's backend is never contacted</text>
+          </svg>
+        </div>
+
+        <!-- Legend — identity is carried by the label text too, never color alone -->
+        <div class="flex flex-wrap gap-x-6 gap-y-2 mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-600"></span>Stays in your browser</span>
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span>Crosses the network — masked, non-content only</span>
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full border-2 border-dashed border-slate-400"></span>External, or bypassed entirely in BYO mode</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PRINCIPLES ============ -->
+    <section id="principles" class="anchor-offset mb-20">
+      <h2 class="text-xl font-semibold tracking-tight mb-1.5">Design principles</h2>
+      <p class="text-sm text-slate-600 dark:text-slate-400 mb-7 max-w-2xl">Seven constraints the architecture is built around — not aspirations, things the code has to satisfy for the product to be what it claims to be.</p>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">1</span>
+            <h3 class="font-medium">Real execution, not talk</h3>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">The agent has tools and a live Python/R environment to actually do data analysis, not just describe what it would do.</p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">2</span>
+            <h3 class="font-medium">Data never leaves the client</h3>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Uploaded files, parsed dataframes, and all intermediate analysis state live only in the browser (OPFS/IndexedDB). The server never receives, stores, or processes the user's data.</p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">3</span>
+            <h3 class="font-medium">Tool calls &amp; execution run client-side</h3>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Every tool dispatch and every line of code runs in the browser — Pyodide/webR workers — never on the server, regardless of which model provider is configured.</p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">4</span>
+            <h3 class="font-medium">Client-side redaction</h3>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Rows, columns, or individual cells can be marked hidden. Whatever the model ends up seeing — tool results, code output, previews, charts — has those values stripped first, at a single <code class="code-block text-xs">sanitize()</code> choke point.</p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">5</span>
+            <h3 class="font-medium">One Dockerfile, one container</h3>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">No docker-compose, no side services. The frontend build, the relay backend, and every execution engine ship inside one Dockerfile as static assets plus a single Python process.</p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">6</span>
+            <h3 class="font-medium">Provider choice, including full bypass</h3>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Route through the hosted proxy, or point the agent at your own API-compatible endpoint — including a local model on your own machine. In that mode, the backend is never contacted at all.</p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 sm:col-span-2">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">7</span>
+            <h3 class="font-medium">Minimal, non-content metadata when hosted</h3>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Routing through the hosted proxy may log basic operational metadata — dataset shape, tool names, model/timing stats — but never the data itself, or anything derived from cell contents.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PRIORITIES ============ -->
+    <section id="priorities" class="anchor-offset mb-20">
+      <h2 class="text-xl font-semibold tracking-tight mb-1.5">Priorities</h2>
+      <p class="text-sm text-slate-600 dark:text-slate-400 mb-7 max-w-2xl">The principles above don't always pull the same direction. This is the order they're resolved in — read top to bottom as "wins over everything below it."</p>
+
+      <ol class="space-y-3">
+        <li class="flex gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <span class="h-7 w-7 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center shrink-0">1</span>
+          <div>
+            <h3 class="font-medium mb-1">Privacy is non-negotiable</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">No feature ships if it requires sending user data off-device, even for convenience. It's why charts are structured Vega-Lite specs instead of raster pixels — a spec can still be masked before render; a PNG can't.</p>
+          </div>
+        </li>
+        <li class="flex gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <span class="h-7 w-7 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center shrink-0">2</span>
+          <div>
+            <h3 class="font-medium mb-1">Correctness over convenience</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">The agent states its assumptions and proceeds by default. It only stops to ask when a point is genuinely ambiguous, the data can't resolve it, <em>and</em> the choice materially changes the result. A question on every turn is a failure mode — a question that prevents a wrong primary result is the win.</p>
+          </div>
+        </li>
+        <li class="flex gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <span class="h-7 w-7 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center shrink-0">3</span>
+          <div>
+            <h3 class="font-medium mb-1">Structured data over freeform text</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Tool results come back as <code class="code-block text-xs">{columns, rows}</code>-shaped payloads and inspectable specs wherever possible, not prose — a value can be masked or lint-rejected before it's serialized, but not after it's already flattened into a string.</p>
+          </div>
+        </li>
+        <li class="flex gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <span class="h-7 w-7 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center shrink-0">4</span>
+          <div>
+            <h3 class="font-medium mb-1">Evidence before trusting a prompt or tool change</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Changes to the system prompt or tool catalog run through the eval harness (standalone smoke test, then the full browser harness) before being treated as settled — a hand-edit is a proposal until the eval tiers confirm it didn't regress analytical rigor.</p>
+          </div>
+        </li>
+        <li class="flex gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <span class="h-7 w-7 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center shrink-0">5</span>
+          <div>
+            <h3 class="font-medium mb-1">Small, auditable backend surface</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">The server is a stateless LLM proxy plus a few static pages — no session state, no body logging. Small enough to read in one sitting and reason about exactly what it could leak.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============ TOOLS ============ -->
+    <section id="tools" class="anchor-offset mb-8">
+      <h2 class="text-xl font-semibold tracking-tight mb-1.5">Tool catalog</h2>
+      <p class="text-sm text-slate-600 dark:text-slate-400 mb-7 max-w-2xl">Everything the agent can call, grouped by purpose. All of it runs client-side (principle 3) and is masking-aware (principle 4) — the tables below note what still gets filtered before the model sees it.</p>
+
+      <!-- Execution -->
+      <div class="mb-10">
+        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Execution</h3>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs">
+              <tr>
+                <th class="text-left font-medium px-4 py-2.5">Tool</th>
+                <th class="text-left font-medium px-4 py-2.5">Args</th>
+                <th class="text-left font-medium px-4 py-2.5">Returns</th>
+                <th class="text-left font-medium px-4 py-2.5">Notes</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">run_python</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ code }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">stdout, dataframe previews, plot images</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Pyodide/WASM worker; persistent namespace across calls in a session</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">run_r</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ code }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">stdout, dataframe previews, plot images</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">webR/WASM worker; same execution model as run_python</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Navigation & introspection -->
+      <div class="mb-10">
+        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Navigation &amp; introspection</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-500 mb-3 max-w-2xl">Read-only, side-effect-free — cut down on the model burning turns re-orienting itself (e.g. re-listing files, reloading a dataset it already has).</p>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs">
+              <tr>
+                <th class="text-left font-medium px-4 py-2.5">Tool</th>
+                <th class="text-left font-medium px-4 py-2.5">Args</th>
+                <th class="text-left font-medium px-4 py-2.5">Returns</th>
+                <th class="text-left font-medium px-4 py-2.5">Masking</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">get_file_tree</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{}</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">Datasets in OPFS + virtual FS: name, size, ext, row/col counts</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">No cell content; filenames not sent as metadata</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">describe_dataset</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ filename }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">Column names, dtypes, row/col counts, null counts</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Value samples through sanitize()</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">preview_file</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ filename, n=10 }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">First n rows as { columns, rows }</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Forbidden literals scrubbed before return</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">read_text_file</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ filename, max_bytes }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">UTF-8 text of a small non-tabular file</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Through sanitize(); size-capped</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">list_variables</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ engine }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">Names/types/shapes of live dataframes &amp; vars</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Names &amp; shapes only, never values</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">column_stats</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ filename, column }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">count/mean/std/quantiles/top categories</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Through sanitize(); steered away from masked columns</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Visualization -->
+      <div class="mb-10">
+        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Visualization</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-500 mb-3 max-w-2xl">Interactive, theme-aware, and — unlike a static plot image — structured enough to mask and lint before it ever renders.</p>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs">
+              <tr>
+                <th class="text-left font-medium px-4 py-2.5">Tool</th>
+                <th class="text-left font-medium px-4 py-2.5">Args</th>
+                <th class="text-left font-medium px-4 py-2.5">Renders</th>
+                <th class="text-left font-medium px-4 py-2.5">Guardrail</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">render_chart</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ spec, description }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">Interactive Vega-Lite SVG chart inline in chat</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">500-point cap; rejects specs referencing a masked column, with an error the model can recover from</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">render_table</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ columns, rows, description }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">Sortable, scrollable, theme-aware table</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Rows routed through sanitize()</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Human-in-the-loop -->
+      <div class="mb-4">
+        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Human-in-the-loop</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-500 mb-3 max-w-2xl">A tool call that pauses and asks, rather than guesses. Governed by priority 2 above — this is a last resort for genuine unknowns, not a substitute for the agent's own judgment.</p>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 mb-4">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 text-xs">
+              <tr>
+                <th class="text-left font-medium px-4 py-2.5">Tool</th>
+                <th class="text-left font-medium px-4 py-2.5">Args</th>
+                <th class="text-left font-medium px-4 py-2.5">Returns</th>
+                <th class="text-left font-medium px-4 py-2.5">Use for</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">ask_user</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ question, why? }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{ answered, answer }</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Free-text clarification (e.g. what a domain term means)</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">ask_choice</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ question, options[], allow_multiple? }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{ answered, selected[] }</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Disambiguation (e.g. which column is the treatment arm)</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-mono text-xs">confirm</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{ question, detail? }</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{ answered, confirmed }</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-500">Yes/no before a consequential, hard-to-undo step</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono">clarify_term</span>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono">choose_column</span>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono">confirm_exclusion</span>
+          <span class="text-xs text-slate-500 dark:text-slate-500 self-center">— thin, better-labeled presets over the three primitives above, same mechanism</span>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-500 mt-4 leading-relaxed">
+          Every card carries a <span class="italic">"Let you decide"</span> control the user can always hit instead of answering, and every request auto-resolves as <code class="code-block">answered: false</code> after 10 minutes or on Stop — a HITL tool call never actually blocks the agent, it only offers it better information when a human is there to give it.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="border-t border-slate-200 dark:border-slate-700 py-8">
+    <div class="max-w-5xl mx-auto px-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 dark:text-slate-600">
+      <span>Bench — design principles, priorities &amp; tool catalog.</span>
+      <div class="flex items-center gap-4">
+        <a href="{{ url_for('landing') }}" class="hover:text-slate-600 dark:hover:text-slate-400">Landing</a>
+        <a href="{{ url_for('workbench') }}" target="_blank" rel="noopener" class="hover:text-slate-600 dark:hover:text-slate-400">Workbench</a>
+        <a href="https://github.com/cowolff/datascience_agent" target="_blank" rel="noopener" class="hover:text-slate-600 dark:hover:text-slate-400">GitHub (MIT)</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

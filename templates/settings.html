@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bench — Settings</title>
+<!-- Applies the "dark" class before first paint — see the identical
+     comment in workbench.html; keep in sync with theme.js's getTheme(). -->
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("bench.theme.v1");
+      var dark = stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch (e) {}
+  })();
+</script>
+<!-- TEMPORARY: see the same note in workbench.html — dev-only Tailwind CDN,
+     swap for the compiled standalone-CLI build before deploying. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: "class" };
+</script>
+<!-- See the identical comment in workbench.html — makes native form
+     controls (radio buttons, etc.) render dark-styled when <html> has
+     the "dark" class. -->
+<style>
+  html.dark { color-scheme: dark; }
+</style>
+</head>
+<body class="h-screen overflow-hidden bg-slate-50 text-slate-900 text-sm dark:bg-slate-900 dark:text-slate-100">
+{% include "_tos_modal.html" %}
+<div class="h-full flex flex-col">
+
+  <header class="h-14 shrink-0 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 bg-white dark:bg-slate-800">
+    <div class="flex items-center gap-3 min-w-0">
+      <a href="/" title="Bench home" class="h-7 w-7 rounded-md bg-blue-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">B</a>
+      <div class="w-px h-5 bg-slate-200 dark:bg-slate-600"></div>
+      <span class="font-medium truncate">Bench — Settings</span>
+    </div>
+  </header>
+
+  <div class="flex-1 flex min-h-0">
+    {% include "_nav.html" %}
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="max-w-2xl mx-auto px-6 py-6">
+
+        <h1 class="text-base font-medium mb-1">Appearance</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+          Follows your system's light/dark setting by default; override it here.
+        </p>
+
+        <div class="grid grid-cols-3 gap-3 mb-8">
+          <label class="cursor-pointer rounded-xl border-2 px-3 py-2.5 flex items-center gap-2 justify-center" id="theme-system-card">
+            <input type="radio" name="theme" value="system" id="theme-system" class="accent-blue-600" />
+            <span class="font-medium text-sm">System</span>
+          </label>
+          <label class="cursor-pointer rounded-xl border-2 px-3 py-2.5 flex items-center gap-2 justify-center" id="theme-light-card">
+            <input type="radio" name="theme" value="light" id="theme-light" class="accent-blue-600" />
+            <span class="font-medium text-sm">Light</span>
+          </label>
+          <label class="cursor-pointer rounded-xl border-2 px-3 py-2.5 flex items-center gap-2 justify-center" id="theme-dark-card">
+            <input type="radio" name="theme" value="dark" id="theme-dark" class="accent-blue-600" />
+            <span class="font-medium text-sm">Dark</span>
+          </label>
+        </div>
+
+        <h1 class="text-base font-medium mb-1">Model provider</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5">
+          Choose how chat requests reach a model. This setting is stored only
+          in this browser (localStorage) — it never touches our backend.
+        </p>
+
+        <div class="grid grid-cols-2 gap-3 mb-6">
+          <label class="cursor-pointer rounded-xl border-2 px-4 py-3 flex flex-col gap-1" id="mode-hosted-card">
+            <span class="flex items-center gap-2">
+              <input type="radio" name="mode" value="hosted" id="mode-hosted" class="accent-blue-600" />
+              <span class="font-medium text-sm">Hosted</span>
+            </span>
+            <span class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Routes through this app's own proxy and API key. Simplest option.
+            </span>
+          </label>
+          <label class="cursor-pointer rounded-xl border-2 px-4 py-3 flex flex-col gap-1" id="mode-custom-card">
+            <span class="flex items-center gap-2">
+              <input type="radio" name="mode" value="custom" id="mode-custom" class="accent-blue-600" />
+              <span class="font-medium text-sm">Custom endpoint</span>
+            </span>
+            <span class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Your own key/server. Your browser talks to it directly — we
+              never see it.
+            </span>
+          </label>
+        </div>
+
+        <section id="hosted-section" class="mb-6">
+          <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Model (optional)</label>
+          <input id="hosted-model" type="text" placeholder="mistral-medium-latest (default)"
+                 class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40" />
+          <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Uses this app's built-in Mistral key, held server-side — never sent to the browser.</p>
+        </section>
+
+        <section id="custom-section" class="space-y-4 mb-6">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Adapter</label>
+            <select id="custom-adapter" class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+              <option value="openai">OpenAI-compatible (OpenAI, Mistral, Ollama, LM Studio, vLLM, ...)</option>
+              <option value="anthropic">Anthropic-compatible (Claude)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Base URL</label>
+            <input id="custom-base-url" type="text" placeholder="https://api.openai.com/v1"
+                   class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40" />
+            <p id="base-url-hint" class="text-xs text-slate-400 dark:text-slate-500 mt-1"></p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">API key</label>
+            <input id="custom-api-key" type="password" autocomplete="off" placeholder="sk-..."
+                   class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Model</label>
+            <input id="custom-model" type="text" placeholder="gpt-4o-mini / claude-sonnet-5 / llama3.1 / ..."
+                   class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40" />
+          </div>
+
+          <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 leading-relaxed dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+            Local model servers (Ollama, LM Studio, vLLM, ...) usually need to
+            be configured to allow requests from this browser origin (e.g.
+            <code class="font-mono">OLLAMA_ORIGINS</code> for Ollama) — this is
+            the most common first failure, not a bug in this app.
+          </div>
+        </section>
+
+        <div class="flex items-center gap-2 mb-2">
+          <button id="test-btn" type="button" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700">Send test message</button>
+          <button id="save-btn" type="button" class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save</button>
+          <span id="status-message" class="text-xs"></span>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 mt-6 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          Custom-endpoint credentials are stored only in this browser's
+          localStorage and are read only when sending a chat request directly
+          to the endpoint you configured — they are never included in any
+          request to this app's own backend.
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module" src="{{ url_for('static', filename='js/settings-page.js') }}"></script>
+</body>
+</html>

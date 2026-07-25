@@ -1,0 +1,135 @@
+<!-- Terms-of-Service gate. Blocks the app until the user accepts, storing
+     acceptance in localStorage (bench.tos.v1 — bump the version suffix in
+     both this key and static/js/tos.js if the terms materially change, to
+     force everyone to re-accept). Hidden by default; the inline script
+     right below shows it synchronously before any other script runs, so
+     there's no flash of usable UI for someone who hasn't accepted yet.
+
+     FILL IN before deploying: replace [Operator Name], [contact email], and
+     [Jurisdiction] below. This text is boilerplate, not legal advice —
+     have counsel review it, especially the liability section, before
+     relying on it. -->
+<div id="tos-overlay" class="hidden fixed inset-0 z-[100] items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+  <div class="w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700">
+    <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+      <h2 class="text-sm font-semibold">Terms of Service</h2>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Please read and accept before using Bench.</p>
+    </div>
+
+    <div id="tos-text" class="flex-1 overflow-y-auto px-5 py-4 text-xs leading-relaxed text-slate-600 dark:text-slate-300 space-y-3">
+      <p><strong>1. Acceptance of Terms.</strong> By checking the box below and
+      clicking "Agree &amp; continue," you accept these Terms of Service
+      ("Terms") in full. If you do not agree, do not use Bench (the
+      "Service"). [Operator Name] may update these Terms from time to time;
+      a material change will require you to re-accept them the next time you
+      open Bench.</p>
+
+      <p><strong>2. What Bench Is.</strong> Bench is a browser-based data
+      science tool. Datasets you upload are parsed and stored locally in
+      your browser (its Origin Private File System) and are not uploaded to
+      any server operated by [Operator Name]. When you send a message, the
+      relevant conversation content is transmitted to a large language model
+      ("LLM") provider — either [Operator Name]'s hosted proxy (currently
+      Mistral) or a custom endpoint you configure with your own credentials
+      — to generate a response. Bench may execute Python or R code,
+      including code written by the LLM, directly in your browser.</p>
+
+      <p><strong>3. No Professional Advice; AI-Generated Content.</strong>
+      Outputs may be inaccurate, incomplete, or entirely wrong, and any code
+      the LLM writes runs exactly as generated unless you review and change
+      it first. Nothing produced by Bench is financial, medical, legal, tax,
+      or other professional advice. Independently verify any output before
+      relying on it for any decision.</p>
+
+      <p><strong>4. Your Data and Responsibilities.</strong> You are solely
+      responsible for the data you upload, the masking rules you configure,
+      and for ensuring that any data you process with Bench — including data
+      sent to an LLM provider — complies with all laws and agreements that
+      apply to you (data protection, confidentiality, intellectual property,
+      etc.). Do not upload data you are not authorized to process, and mask
+      or withhold sensitive personal data, regulated data, or trade secrets
+      unless you have confirmed it is safe to send to your chosen provider.</p>
+
+      <p><strong>5. Third-Party Services.</strong> Bench relies on
+      third-party LLM providers. Your use of those providers is subject to
+      their own terms, privacy policies, and costs. [Operator Name] does not
+      control and is not responsible for the availability, accuracy,
+      security, or content of any third-party service.</p>
+
+      <p><strong>6. No Warranty.</strong> THE SERVICE IS PROVIDED "AS IS" AND
+      "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS, IMPLIED, OR
+      STATUTORY, INCLUDING ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS
+      FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, OR THAT
+      THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE. YOU USE THE
+      SERVICE, AND ANY CODE OR OUTPUT IT GENERATES OR EXECUTES, ENTIRELY AT
+      YOUR OWN RISK.</p>
+
+      <p><strong>7. Limitation of Liability.</strong> TO THE MAXIMUM EXTENT
+      PERMITTED BY APPLICABLE LAW, [OPERATOR NAME] AND ITS CONTRIBUTORS,
+      EMPLOYEES, AND AFFILIATES WILL NOT BE LIABLE FOR ANY INDIRECT,
+      INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR
+      ANY LOSS OF DATA, PROFITS, REVENUE, OR GOODWILL, ARISING OUT OF OR
+      RELATED TO YOUR ACCESS TO OR USE OF (OR INABILITY TO ACCESS OR USE) THE
+      SERVICE, ANY CODE OR OUTPUT IT GENERATES OR EXECUTES, OR ANY
+      THIRD-PARTY SERVICE IT CONNECTS TO — REGARDLESS OF LEGAL THEORY, AND
+      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. TO THE EXTENT
+      LIABILITY CANNOT BE EXCLUDED UNDER APPLICABLE LAW, IT IS LIMITED TO THE
+      GREATER OF (A) THE AMOUNT YOU PAID TO USE THE SERVICE IN THE 12 MONTHS
+      BEFORE THE CLAIM, OR (B) FIFTY US DOLLARS ($50).</p>
+
+      <p><strong>8. Indemnification.</strong> You agree to indemnify and
+      hold harmless [Operator Name] from any claim, demand, loss, or damage,
+      including reasonable legal fees, arising out of your use of the
+      Service, the data you process with it, or your violation of these
+      Terms.</p>
+
+      <p><strong>9. Assumption of Risk (Code Execution).</strong> Bench may
+      run Python or R code — including LLM-written code — directly in your
+      browser or, for R, in a locally configured runtime. You are
+      responsible for reviewing any such code before it runs and for the
+      consequences of running it, including data loss, incorrect results, or
+      unintended side effects.</p>
+
+      <p><strong>10. Changes; Termination.</strong> [Operator Name] may
+      modify these Terms, or suspend or discontinue the Service, at any time
+      without liability to you.</p>
+
+      <p><strong>11. Governing Law.</strong> These Terms are governed by the
+      laws of [Jurisdiction], without regard to conflict-of-law principles,
+      and any dispute will be resolved exclusively in the courts located
+      there, unless applicable law requires otherwise.</p>
+
+      <p><strong>12. Miscellaneous.</strong> If any provision of these Terms
+      is found unenforceable, the remaining provisions stay in full effect.
+      These Terms are the entire agreement between you and [Operator Name]
+      regarding the Service. Questions: [contact email].</p>
+    </div>
+
+    <div class="px-5 py-4 border-t border-slate-200 dark:border-slate-700">
+      <label class="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300 mb-3 cursor-pointer">
+        <input type="checkbox" id="tos-checkbox" class="mt-0.5 accent-blue-600" />
+        I have read and agree to the Terms of Service above.
+      </label>
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" id="tos-decline" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700">Decline</button>
+        <button type="button" id="tos-agree" disabled class="text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">Agree &amp; continue</button>
+      </div>
+      <p id="tos-declined-msg" class="hidden text-xs text-red-600 dark:text-red-400 mt-2">
+        Bench requires accepting the Terms of Service to continue. You may close this tab.
+      </p>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    try {
+      if (localStorage.getItem("bench.tos.v1") !== "1") {
+        var el = document.getElementById("tos-overlay");
+        el.classList.remove("hidden");
+        el.classList.add("flex");
+        document.body.classList.add("overflow-hidden");
+      }
+    } catch (e) {}
+  })();
+</script>
+<script type="module" src="{{ url_for('static', filename='js/tos.js') }}"></script>

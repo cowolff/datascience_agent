@@ -1,0 +1,58 @@
+# Checkable facts mined from sample_data/analysis_4/outcome/report.md and
+# analysis_log.txt, for the trimmed primary-question case (case.yaml).
+# Deliberately coarse (substring/regex, no numeric-tolerance parsing, no
+# LLM-judge) — this is a Phase 1 wiring/debug rubric, not the polished
+# rubric a real GEPA optimization run would use (plan §6.3).
+#
+# type: contains_any -> passes if ANY listed string appears (case-insensitive)
+# type: regex         -> passes if the pattern matches (case-insensitive, re.DOTALL)
+checks:
+  - id: sample_size
+    type: regex
+    weight: 1
+    pattern: '1[.,\s]?659'
+    feedback_if_failed: >
+      Didn't report the analysis population size (~1,659 timepoints after
+      exclusions) — should state row/entity counts before presenting results.
+
+  - id: patient_count
+    type: regex
+    weight: 1
+    pattern: '436'
+    feedback_if_failed: >
+      Didn't report the reconstructed patient count (~436) — no patient-ID
+      column exists in the raw data, so this number only appears if the
+      agent reconstructed one from other fields, as instructed.
+
+  - id: mentions_hd_mel_direction
+    type: contains_any
+    weight: 1
+    values: ["HD-Mel", "Hochdosis-Melphalan", "high-dose melphalan"]
+    feedback_if_failed: >
+      Didn't identify high-dose melphalan (HD-Mel) as a distinct driver of
+      the CD-ratio at all.
+
+  - id: significance_reported
+    type: regex
+    weight: 1
+    pattern: 'p\s*[<=]\s*0[.,]0'
+    feedback_if_failed: >
+      No p-value / significance figure reported for the main comparison —
+      effect sizes should come with a formal test, not just a described
+      direction.
+
+  - id: transformation_justified
+    type: contains_any
+    weight: 1
+    values: ["log-transform", "log transform", "Log-Transformation", "logarithm", "logarithmiert"]
+    feedback_if_failed: >
+      CD-ratio is strongly right-skewed; didn't diagnose this or justify a
+      transformation before modeling it.
+
+  - id: repeated_measures_model
+    type: contains_any
+    weight: 1
+    values: ["mixed", "gemischt", "random effect", "Zufallseffekt", "MixedLM", "lmer", "random intercept"]
+    feedback_if_failed: >
+      Data has repeated timepoints per patient; didn't use a model with a
+      patient-level random effect (treated rows as independent instead).

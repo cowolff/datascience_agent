@@ -1,0 +1,10 @@
+# Trimmed to the primary research question only — see case.yaml for why.
+# Verbatim from sample_data/analysis_4/research_questions.txt (question 1).
+- id: q1_primary
+  text: >
+    Welchen Einfluss haben klinisch definierte Kombinationen der
+    Chemotherapeutika (Carfilzomib, Bortezomib, Pomalidomid, Lenalidomid,
+    Daratumumab, Elotuzumab und Hochdosis-Melphalan) auf die relative
+    Verteilung und absolute Zahl peripherer Lymphozyten-Subpopulationen bei
+    Patienten mit Multiplem Myelom, insbesondere auf das CD4/CD8-Verhältnis
+    (CD-ratio)?

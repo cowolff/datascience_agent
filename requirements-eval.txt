@@ -1,0 +1,12 @@
+# Dev/CI-only dependencies for the standalone GEPA prompt-optimization harness
+# (plans/online-data-science-agent.md §6, Phase 1 of §7). Never installed in the
+# production Docker image — see the Dockerfile note in §4 of that plan.
+httpx
+python-dotenv
+pyyaml
+gepa
+
+# Production-fidelity eval harness only (§6.2 tier 2 / §7 Phase 9) — drives
+# the real SPA headlessly. Also dev/CI-only; run `playwright install
+# chromium` once after installing this.
+playwright

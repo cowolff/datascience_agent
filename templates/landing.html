@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bench — a data science agent that never leaves your browser</title>
+<!-- Applies the "dark" class before first paint — see the identical
+     comment in workbench.html; keep in sync with theme.js's getTheme(). -->
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("bench.theme.v1");
+      var dark = stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch (e) {}
+  })();
+</script>
+<!-- TEMPORARY: see the same note in workbench.html — dev-only Tailwind CDN,
+     swap for the compiled standalone-CLI build before deploying. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: "class" };
+</script>
+<script type="module" src="{{ url_for('static', filename='js/theme.js') }}"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+
+  <!-- Marketing nav — deliberately not the app's icon rail (_nav.html);
+       this page sits outside the app shell, so the workbench opens in a
+       new tab rather than navigating this page away. -->
+  <header class="border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="h-7 w-7 rounded-md bg-blue-600 flex items-center justify-center text-white font-semibold text-xs">B</div>
+        <span class="font-medium">Bench</span>
+      </div>
+      <nav class="flex items-center gap-5 text-sm text-slate-600 dark:text-slate-400">
+        <a href="{{ url_for('design') }}" class="hover:text-slate-900 dark:hover:text-white transition-colors">Design &amp; tools</a>
+        <a href="https://github.com/cowolff/datascience_agent" target="_blank" rel="noopener" class="hidden sm:inline hover:text-slate-900 dark:hover:text-white transition-colors">GitHub</a>
+        <a href="{{ url_for('workbench') }}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors">
+          Launch workbench
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m3-3h5m0 0v5m0-5L10 14"/></svg>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
+    <span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 mb-6">
+      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2Zm10-9V7a4 4 0 1 0-8 0v3"/></svg>
+      Runs entirely in your browser — nothing uploaded
+    </span>
+    <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight mb-5">
+      Talk to your data.<br class="hidden sm:block" />
+      <span class="text-blue-600">Get real analysis back</span> — not a guess.
+    </h1>
+    <p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed mb-9">
+      Bench is a browser-based data science agent. Chat about a dataset and it
+      writes and runs real Python (Pyodide/WASM) and R (webR/WASM) against
+      it — but that code, and the data it touches, never leave your tab.
+      The server never sees a file, a dataframe, or a result.
+    </p>
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+      <a href="{{ url_for('workbench') }}" target="_blank" rel="noopener"
+         class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-500 transition-colors shadow-sm">
+        Launch the workbench
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m3-3h5m0 0v5m0-5L10 14"/></svg>
+      </a>
+      <a href="{{ url_for('design') }}"
+         class="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+        See design principles &amp; tools
+      </a>
+    </div>
+    <p class="text-xs text-slate-400 dark:text-slate-600 mt-4">Opens in a new tab — this page stays put so you can come back to it.</p>
+  </section>
+
+  <!-- Trust strip -->
+  <section class="border-y border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+    <div class="max-w-5xl mx-auto px-6 py-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+      <span class="flex items-center gap-1.5"><svg class="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"/></svg>No file upload — data stays in OPFS/IndexedDB</span>
+      <span class="flex items-center gap-1.5"><svg class="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"/></svg>Code executes client-side (Pyodide/webR)</span>
+      <span class="flex items-center gap-1.5"><svg class="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"/></svg>Row/column/cell masking before anything is sent</span>
+      <span class="flex items-center gap-1.5"><svg class="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"/></svg>Bring your own model, or run one locally</span>
+    </div>
+  </section>
+
+  <!-- Feature grid -->
+  <section class="max-w-5xl mx-auto px-6 py-16">
+    <h2 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-6 text-center">What Bench actually does</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div class="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+          <svg class="h-4.5 w-4.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="m10 9-3 3 3 3m4-6 3 3-3 3M4 4h16v16H4z"/></svg>
+        </div>
+        <h3 class="font-medium mb-1.5">Real code, not vibes</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Every claim the agent makes is backed by Python or R it actually ran — visible in a tool-call trace, not summarized away.</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div class="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+          <svg class="h-4.5 w-4.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2Zm10-9V7a4 4 0 1 0-8 0v3"/></svg>
+        </div>
+        <h3 class="font-medium mb-1.5">Nothing leaves your browser</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Files, parsed dataframes, and analysis state live only in the tab. The backend is a stateless relay to the model — it never receives your data.</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div class="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+          <svg class="h-4.5 w-4.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M10.5 10.677a2 2 0 0 0 2.823 2.823M6.5 6.5C4.5 8 3 10 2 12c1.5 3 5 7 10 7 1.8 0 3.4-.5 4.8-1.3M9.9 5.1A9.7 9.7 0 0 1 12 5c5 0 8.5 4 10 7-.6 1.2-1.5 2.6-2.7 3.9"/></svg>
+        </div>
+        <h3 class="font-medium mb-1.5">You control what the model sees</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Mask rows, columns, or individual cells. The agent still computes on the real data underneath — it just never sees the masked values.</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div class="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+          <svg class="h-4.5 w-4.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v18M4 7h4m-4 5h4m-4 5h4M15 7h5m-5 5h5m-5 5h5"/></svg>
+        </div>
+        <h3 class="font-medium mb-1.5">Bring your own model</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Use the hosted proxy, or point Bench at your own API key or a model running on your own machine — bypassing our backend entirely.</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div class="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+          <svg class="h-4.5 w-4.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.9 9.9 0 0 1-4-.8L3 20l1.2-3.6A7.9 7.9 0 0 1 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z"/></svg>
+        </div>
+        <h3 class="font-medium mb-1.5">Asks only when it matters</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">When something is genuinely ambiguous and changes the result, the agent pauses and asks — instead of silently picking one interpretation.</p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div class="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+          <svg class="h-4.5 w-4.5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m-8 5h10a2 2 0 0 0 2-2V7.414a2 2 0 0 0-.586-1.414l-3.414-3.414A2 2 0 0 0 13.586 2H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z"/></svg>
+        </div>
+        <h3 class="font-medium mb-1.5">Take the analysis with you</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Export a written report with charts and the full tool trace — as a PDF, or a ZIP with re-editable chart specs.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Full transparency -->
+  <section class="max-w-5xl mx-auto px-6 pb-16">
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 sm:p-10 flex flex-col sm:flex-row items-start gap-6">
+      <div class="h-11 w-11 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+        <svg class="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight mb-2">Don't take our word for it — read the code</h2>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl mb-4">
+          Every claim on this page — that your data never leaves the browser, that execution runs client-side, that masking happens before anything is sent — is a claim about code, not policy. Bench is
+          <span class="font-medium text-slate-800 dark:text-slate-200">open source under the MIT license</span>,
+          so none of it has to be taken on trust: read the source, verify the network calls yourself, or fork it and self-host.
+        </p>
+        <a href="https://github.com/cowolff/datascience_agent" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.98 5.24.98 11.5c0 4.97 3.22 9.19 7.7 10.68.56.1.77-.24.77-.54 0-.27-.01-1.16-.02-2.1-3.14.68-3.8-1.34-3.8-1.34-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.72 2.63 1.22 3.27.94.1-.73.39-1.22.71-1.5-2.51-.29-5.15-1.25-5.15-5.58 0-1.23.44-2.24 1.16-3.03-.12-.29-.5-1.44.11-3 0 0 .95-.3 3.11 1.16a10.8 10.8 0 0 1 5.66 0c2.16-1.46 3.11-1.16 3.11-1.16.61 1.56.23 2.71.11 3 .72.79 1.16 1.8 1.16 3.03 0 4.34-2.65 5.29-5.17 5.57.4.35.76 1.03.76 2.08 0 1.5-.01 2.71-.01 3.08 0 .3.2.65.78.54 4.47-1.49 7.69-5.71 7.69-10.68C23.02 5.24 18.27.5 12 .5Z"/></svg>
+          github.com/cowolff/datascience_agent
+          <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-mono">MIT</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Closing CTA -->
+  <section class="max-w-5xl mx-auto px-6 pb-24 text-center">
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-8 py-12">
+      <h2 class="text-2xl font-semibold tracking-tight mb-2">Bring a dataset. Ask it something real.</h2>
+      <p class="text-slate-600 dark:text-slate-400 mb-7">No account, no upload step — your files stay local from the first click.</p>
+      <a href="{{ url_for('workbench') }}" target="_blank" rel="noopener"
+         class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-500 transition-colors">
+        Launch the workbench
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m3-3h5m0 0v5m0-5L10 14"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <footer class="border-t border-slate-200 dark:border-slate-700 py-8">
+    <div class="max-w-5xl mx-auto px-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 dark:text-slate-600">
+      <span>Bench — a client-side data science agent.</span>
+      <div class="flex items-center gap-4">
+        <a href="{{ url_for('design') }}" class="hover:text-slate-600 dark:hover:text-slate-400">Design &amp; tools</a>
+        <a href="{{ url_for('workbench') }}" target="_blank" rel="noopener" class="hover:text-slate-600 dark:hover:text-slate-400">Workbench</a>
+        <a href="https://github.com/cowolff/datascience_agent" target="_blank" rel="noopener" class="hover:text-slate-600 dark:hover:text-slate-400">GitHub (MIT)</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
