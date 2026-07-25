@@ -54,3 +54,19 @@ export async function loadChatState() {
     db.close();
   }
 }
+
+/** Backs the "Delete chat" button (workbench.js) — wipes the persisted
+ * record so a reload doesn't bring the just-deleted conversation back. */
+export async function clearChatState() {
+  const db = await openDB();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).delete(KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}

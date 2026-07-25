@@ -22,7 +22,7 @@ import {
 } from "./tools.js";
 import { renderArtifact } from "./render/index.js";
 import { renderPromptCard, renderResolvedPromptCard } from "./render/prompt.js";
-import { saveChatState, loadChatState } from "./chat-store.js";
+import { saveChatState, loadChatState, clearChatState } from "./chat-store.js";
 import { saveToOPFS, listOPFSFiles, readOPFSFile } from "./datasets.js";
 import { parseCSV } from "./csv.js";
 import { loadMaskSpec, computeForbiddenValues, SIDECAR_SUFFIX } from "./masking.js";
@@ -68,6 +68,7 @@ const datasetListEl = document.getElementById("dataset-list");
 const pythonStatusEl = document.getElementById("python-status");
 const rStatusEl = document.getElementById("r-status");
 const exportChatBtnEl = document.getElementById("export-chat-btn");
+const deleteChatBtnEl = document.getElementById("delete-chat-btn");
 
 const history = [];
 // One entry per completed turn, replayable (replayTurn, below) into the
@@ -440,11 +441,13 @@ function pushBusy() {
   busyCount++;
   inputEl.disabled = true;
   syncSendButtonDisabled();
+  syncChatActionButtons(); // deleting mid-turn would rip out DOM/state a live tool call still references
 }
 function popBusy() {
   busyCount = Math.max(0, busyCount - 1);
   if (busyCount === 0) inputEl.disabled = false;
   syncSendButtonDisabled();
+  syncChatActionButtons();
 }
 
 // ---- send/stop button ---------------------------------------------------
@@ -752,7 +755,7 @@ async function handleSubmit(event) {
   if (stoppedReason === "final_message") {
     history.push({ role: "user", content: text });
     history.push({ role: "assistant", content: finalText });
-    syncExportButton();
+    syncChatActionButtons();
   }
   transcript.push(turnRecord);
   scheduleSave();
@@ -887,11 +890,46 @@ function exportChat() {
   downloadJson("bench-chat.json", payload);
 }
 
-function syncExportButton() {
-  exportChatBtnEl.disabled = history.length === 0;
+function syncChatActionButtons() {
+  const hasChat = history.length > 0 || transcript.length > 0;
+  exportChatBtnEl.disabled = !hasChat;
+  // Also gated on busyCount (pushBusy/popBusy) — deleting mid-turn would
+  // clear state (renderStore/plotStore/DOM) a still-running tool call or
+  // its in-flight rendering may still reference.
+  deleteChatBtnEl.disabled = !hasChat || busyCount > 0;
 }
 
 exportChatBtnEl.addEventListener("click", exportChat);
+
+/** "Delete chat" — wipes every bit of client-side chat state (in-memory
+ * and the IndexedDB record from chat-store.js) and the visible transcript,
+ * so the workbench looks exactly like a first visit. Datasets/masking
+ * rules (OPFS) and provider settings (localStorage) are untouched — this
+ * only clears the conversation. */
+async function deleteChat() {
+  if (!window.confirm("Delete this conversation? This clears it from this browser and can't be undone.")) {
+    return;
+  }
+
+  history.length = 0;
+  transcript.length = 0;
+  hitlLog.length = 0;
+  executedCalls.length = 0;
+  restoreRenderStore({ entries: [], counters: [] });
+  restorePlotStore({ entries: [], nextPlotId: 1 });
+  messagesEl.innerHTML = "";
+
+  syncChatActionButtons();
+  try {
+    await clearChatState();
+  } catch (err) {
+    console.error("Failed to clear saved chat state", err);
+  }
+}
+
+deleteChatBtnEl.addEventListener("click", () => {
+  deleteChat().catch((err) => appendErrorText(messagesEl, `Failed to delete chat: ${err.message || err}`));
+});
 
 // ---- chat persistence (IndexedDB, plan principle 2 — never leaves the
 // browser) ----------------------------------------------------------------
@@ -977,7 +1015,7 @@ async function restoreChatState() {
     replayTurn(turnRecord, hitlQueue);
     transcript.push(turnRecord);
   }
-  syncExportButton();
+  syncChatActionButtons();
 }
 
 // ---- provider badge (plan §3.6/§7 Phase 7) -----------------------------

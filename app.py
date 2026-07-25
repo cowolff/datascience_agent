@@ -85,6 +85,16 @@ def settings():
     return render_template("settings.html", active="settings")
 
 
+@app.get("/help/ollama-cors")
+def ollama_cors_help():
+    """Static tutorial linked from the Settings page's custom-endpoint CORS
+    warning (plan §3.6: local model servers are the most common first
+    failure in that mode). Purely informational, like /design — no dataset/
+    LLM interaction, so no TOS gate. `active="settings"` keeps the sidebar's
+    Settings icon highlighted, since this reads as part of that section."""
+    return render_template("ollama_cors_help.html", active="settings")
+
+
 @app.get("/api/config")
 def config():
     """Serves the client its system prompt from a single source of truth —

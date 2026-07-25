@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bench — Fixing CORS with Ollama</title>
+<!-- Applies the "dark" class before first paint — see the identical
+     comment in workbench.html; keep in sync with theme.js's getTheme(). -->
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("bench.theme.v1");
+      var dark = stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch (e) {}
+  })();
+</script>
+<!-- TEMPORARY: see the same note in workbench.html — dev-only Tailwind CDN,
+     swap for the compiled standalone-CLI build before deploying. -->
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+<script>
+  tailwind.config = { darkMode: "class" };
+</script>
+<script type="module" src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<style>
+  html.dark { color-scheme: dark; }
+</style>
+</head>
+<body class="h-screen overflow-hidden bg-slate-50 text-slate-900 text-sm dark:bg-slate-900 dark:text-slate-100">
+<div class="h-full flex flex-col">
+
+  <header class="h-14 shrink-0 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 bg-white dark:bg-slate-800">
+    <div class="flex items-center gap-3 min-w-0">
+      <a href="/" title="Bench home" class="h-7 w-7 rounded-md bg-blue-600 flex items-center justify-center text-white font-semibold text-xs shrink-0">B</a>
+      <div class="w-px h-5 bg-slate-200 dark:bg-slate-600"></div>
+      <span class="font-medium truncate">Fixing CORS with Ollama</span>
+    </div>
+    <a href="{{ url_for('settings') }}" class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">
+      ← Back to Settings
+    </a>
+  </header>
+
+  <div class="flex-1 flex min-h-0">
+    {% include "_nav.html" %}
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="max-w-2xl mx-auto px-6 py-8 prose prose-sm prose-slate dark:prose-invert">
+
+        <h1>Fixing CORS with Ollama</h1>
+        <p class="text-slate-500 dark:text-slate-400">
+          Custom-endpoint mode makes your <strong>browser</strong> call your model
+          server directly — Bench's own backend is never involved (see
+          <a href="{{ url_for('settings') }}">Settings</a>). For a local server
+          like Ollama, that means the request has to clear the browser's CORS
+          check, and Ollama's default configuration doesn't allow it. This is
+          the single most common first failure in custom-endpoint mode, not a
+          bug in Bench.
+        </p>
+
+        <h2>Why this happens</h2>
+        <p>
+          Ollama only allows cross-origin requests from <code>127.0.0.1</code>
+          and <code>0.0.0.0</code> by default. The page you're reading Bench
+          from right now — <code class="js-origin">http://localhost:3000</code>
+          — is a <em>different</em> origin from Ollama's own
+          <code>http://localhost:11434</code>, so the browser blocks the
+          request before it ever reaches Ollama. You'll typically see an error
+          in Bench like <em>"Could not reach &lt;url&gt; directly from the
+          browser"</em>.
+        </p>
+
+        <h2>The fix: <code>OLLAMA_ORIGINS</code></h2>
+        <p>
+          Ollama accepts an extra allow-list of origins via the
+          <code>OLLAMA_ORIGINS</code> environment variable. Set it to the exact
+          origin shown in your browser's address bar while using Bench (or
+          <code>*</code> to allow any site — simplest for local development,
+          but it means <em>any</em> website you visit can talk to your local
+          Ollama, so prefer the exact origin if you can), then restart Ollama.
+        </p>
+
+        <h3>Running <code>ollama serve</code> yourself</h3>
+        <p>Set the variable for that one command:</p>
+        <pre class="code-block"><code>OLLAMA_ORIGINS=<span class="js-origin">http://localhost:3000</span> ollama serve</code></pre>
+
+        <h3>macOS (Ollama app)</h3>
+        <ol>
+          <li>Set the variable with <code>launchctl</code>:
+            <pre class="code-block"><code>launchctl setenv OLLAMA_ORIGINS "<span class="js-origin">http://localhost:3000</span>"</code></pre>
+          </li>
+          <li>Quit and reopen the Ollama app (from the menu bar icon) so it picks up the new value.</li>
+        </ol>
+
+        <h3>Linux (systemd service)</h3>
+        <ol>
+          <li>Open the service's override file:
+            <pre class="code-block"><code>sudo systemctl edit ollama.service</code></pre>
+          </li>
+          <li>Add the variable under <code>[Service]</code>:
+            <pre class="code-block"><code>[Service]
+Environment="OLLAMA_ORIGINS=<span class="js-origin">http://localhost:3000</span>"</code></pre>
+          </li>
+          <li>Save, then reload and restart:
+            <pre class="code-block"><code>sudo systemctl daemon-reload
+sudo systemctl restart ollama</code></pre>
+          </li>
+        </ol>
+
+        <h3>Windows</h3>
+        <ol>
+          <li>Quit Ollama from the system tray.</li>
+          <li>Open <em>Settings</em> (Windows 11) or <em>Control Panel</em> (Windows 10) and search for <em>environment variables</em>.</li>
+          <li>Choose <em>Edit environment variables for your account</em>.</li>
+          <li>Add a new variable named <code>OLLAMA_ORIGINS</code> with the value set to your Bench origin (<code class="js-origin">http://localhost:3000</code>).</li>
+          <li>Click OK/Apply, then start Ollama again from the Start menu.</li>
+        </ol>
+
+        <h2>Verify it worked</h2>
+        <p>
+          Back in Bench, open <a href="{{ url_for('settings') }}">Settings</a>,
+          confirm your custom endpoint's base URL and model, and click
+          <strong>"Send test message"</strong>. If it still fails, double-check
+          that the origin you set matches what's actually in your address bar
+          — including the port — and that you fully restarted Ollama rather
+          than just leaving it running.
+        </p>
+
+        <p class="text-slate-500 dark:text-slate-400 text-xs">
+          For the authoritative, up-to-date reference, see Ollama's own docs:
+          <a href="https://docs.ollama.com/faq" target="_blank" rel="noopener">docs.ollama.com/faq</a>
+          ("How can I allow additional web origins to access Ollama?" and
+          "How do I configure Ollama server?").
+        </p>
+
+      </div>
+    </main>
+  </div>
+</div>
+<!-- The commands above need *this specific browser's* origin, which differs
+     between local dev (http://localhost:3000) and a real deployment
+     (https://<app>.atlasflow.dev) — filled in from window.location.origin
+     rather than hardcoded, so the copy-pasted command is correct wherever
+     this page is actually being read from. -->
+<script>
+  document.querySelectorAll(".js-origin").forEach(function (el) {
+    el.textContent = window.location.origin;
+  });
+</script>
+</body>
+</html>
