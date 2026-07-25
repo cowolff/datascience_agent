@@ -1,9 +1,16 @@
 // Page glue for templates/settings.html — provider settings (plan §3.6).
-// Reads/writes settings.js's localStorage-backed store; the "Send test
-// message" button exercises provider.js's actual call paths against the
-// *current form values* (not necessarily saved yet), so a user can verify a
-// custom endpoint — the most likely thing to have friction (CORS, wrong
-// base URL, bad key) — before committing to it.
+// Reads/writes settings.js's localStorage-backed store. Every field
+// (mode, hosted model, and the full custom-endpoint form: adapter, base
+// URL, API key, model) autosaves on change/input — localStorage.setItem is
+// synchronous and cheap, so there's no reason to make a user's typed-in
+// custom endpoint config a "draft" that a forgotten click on "Save" or a
+// stray reload can lose. The "Send test message" button still exercises
+// provider.js's actual call paths against the *current form values* (which
+// are now always already persisted too), so a user can verify a custom
+// endpoint — the most likely thing to have friction (CORS, wrong base URL,
+// bad key) — without that verification depending on Save at all. The Save
+// button itself stays, now purely as an explicit "yes, this is saved"
+// confirmation rather than the only thing that actually saves.
 
 import { getSettings, saveSettings } from "./settings.js";
 import { callCustomEndpoint } from "./provider.js";
@@ -93,9 +100,29 @@ function setStatus(text, kind) {
   statusEl.className = `text-xs ${colors[kind] || colors.info}`;
 }
 
-modeHostedEl.addEventListener("change", renderMode);
-modeCustomEl.addEventListener("change", renderMode);
-customAdapterEl.addEventListener("change", renderMode);
+// Autosave: every one of these fields persists the *entire* form on every
+// change, not just the field that changed — currentFormAsSettings() always
+// returns a complete object, so this can never leave one field's saved
+// value stale relative to another's.
+function autoSave() {
+  saveSettings(currentFormAsSettings());
+}
+
+modeHostedEl.addEventListener("change", () => {
+  renderMode();
+  autoSave();
+});
+modeCustomEl.addEventListener("change", () => {
+  renderMode();
+  autoSave();
+});
+customAdapterEl.addEventListener("change", () => {
+  renderMode();
+  autoSave();
+});
+for (const el of [hostedModelEl, customBaseUrlEl, customApiKeyEl, customModelEl]) {
+  el.addEventListener("input", autoSave);
+}
 
 for (const [value, radioEl] of Object.entries({ system: themeSystemEl, light: themeLightEl, dark: themeDarkEl })) {
   radioEl.addEventListener("change", () => {
@@ -105,7 +132,7 @@ for (const [value, radioEl] of Object.entries({ system: themeSystemEl, light: th
 }
 
 saveBtnEl.addEventListener("click", () => {
-  saveSettings(currentFormAsSettings());
+  autoSave();
   setStatus("Saved.", "ok");
   setTimeout(() => setStatus("", "info"), 3000);
 });
