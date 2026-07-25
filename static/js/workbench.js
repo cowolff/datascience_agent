@@ -1003,19 +1003,44 @@ async function restoreChatState() {
   }
   if (!saved || !Array.isArray(saved.transcript) || saved.transcript.length === 0) return;
 
-  restoreRenderStore(saved.renderStore);
-  restorePlotStore(saved.plotStore);
-  if (Array.isArray(saved.history)) history.push(...saved.history);
-  if (Array.isArray(saved.hitlLog)) hitlLog.push(...saved.hitlLog);
-  if (Array.isArray(saved.executedCalls)) executedCalls.push(...saved.executedCalls);
+  // Everything below is best-effort DOM replay of arbitrary saved data —
+  // if one turn's replay throws (a malformed/older-shape turnRecord, a
+  // render artifact that didn't round-trip cleanly, ...), the `finally`
+  // still has to run: history/hitlLog/executedCalls and whatever turns
+  // replayed before the failure are already real, non-empty state, so the
+  // export/delete buttons must reflect that instead of silently staying in
+  // their default disabled HTML state because a later line never ran.
+  try {
+    restoreRenderStore(saved.renderStore);
+    restorePlotStore(saved.plotStore);
+    if (Array.isArray(saved.history)) history.push(...saved.history);
+    if (Array.isArray(saved.hitlLog)) hitlLog.push(...saved.hitlLog);
+    if (Array.isArray(saved.executedCalls)) executedCalls.push(...saved.executedCalls);
 
-  appendNoteText(messagesEl, "Restored your previous conversation from this browser.");
-  const hitlQueue = [...hitlLog];
-  for (const turnRecord of saved.transcript) {
-    replayTurn(turnRecord, hitlQueue);
-    transcript.push(turnRecord);
+    appendNoteText(messagesEl, "Restored your previous conversation from this browser.");
+    const hitlQueue = [...hitlLog];
+    let failedTurns = 0;
+    for (const turnRecord of saved.transcript) {
+      // Per-turn, not just per-restore: one bad turn (e.g. a stale render
+      // reference) shouldn't take the rest of a long conversation down
+      // with it.
+      try {
+        replayTurn(turnRecord, hitlQueue);
+        transcript.push(turnRecord);
+      } catch (err) {
+        failedTurns++;
+        console.error("Failed to replay a saved turn", err);
+      }
+    }
+    if (failedTurns > 0) {
+      appendErrorText(messagesEl, `${failedTurns} earlier turn${failedTurns === 1 ? "" : "s"} couldn't be restored.`);
+    }
+  } catch (err) {
+    console.error("Failed to fully replay saved chat state", err);
+    appendErrorText(messagesEl, "Some of your previous conversation couldn't be restored.");
+  } finally {
+    syncChatActionButtons();
   }
-  syncChatActionButtons();
 }
 
 // ---- provider badge (plan §3.6/§7 Phase 7) -----------------------------
