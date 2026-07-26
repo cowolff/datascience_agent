@@ -33,6 +33,38 @@ function collectValueArrays(node, out) {
   }
 }
 
+// Vega-Lite only ever puts a literal "url"/"href" key at a schema location
+// that fetches or navigates to a network resource: top-level/nested
+// `data.url`, a lookup transform's `from.data.url`, or an image/link mark's
+// `url`/`href` encoding channel. There's no legitimate aggregate-chart spec
+// that needs either key, so any occurrence anywhere in the spec is rejected
+// rather than trying to enumerate every field shape that can carry one.
+const NETWORK_FACING_KEYS = new Set(["url", "href"]);
+
+/** Recursively scan the whole spec — not just its data-values arrays — for a
+ * network-facing field. vega-embed's default loader fetches `data.url` the
+ * instant a chart renders, with no click or confirmation, so this has to run
+ * before the spec is ever handed to it. Returns the offending field's path
+ * (for the error message) or null if the spec is clean. */
+function findNetworkField(node, path = "") {
+  if (Array.isArray(node)) {
+    for (let i = 0; i < node.length; i++) {
+      const found = findNetworkField(node[i], `${path}[${i}]`);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (node && typeof node === "object") {
+    for (const key of Object.keys(node)) {
+      const childPath = path ? `${path}.${key}` : key;
+      if (NETWORK_FACING_KEYS.has(key)) return childPath;
+      const found = findNetworkField(node[key], childPath);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 /** Scrub forbidden literals out of inline data *values*, leaving object keys
  * (field/column names the encoding references) intact so the chart doesn't
  * break. Over-scrubbing a value is the documented-safe failure (plan §4.2).*/
@@ -61,6 +93,19 @@ export const renderChartTool = defineTool({
     }
     if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
       return { ok: false, error: "`spec` must be a Vega-Lite spec object with inline `data.values` and an `encoding`." };
+    }
+
+    const networkField = findNetworkField(spec);
+    if (networkField) {
+      return {
+        ok: false,
+        error:
+          `Chart spec has a network-facing field ("${networkField}"). render_chart only ` +
+          "supports inline data via `data.values` — it cannot fetch a URL (data.url, an " +
+          "image/link mark's url/href channel, or a lookup transform's `from.data.url` " +
+          "are all rejected), since that would make the chart fire an outbound request " +
+          "as soon as it renders.",
+      };
     }
 
     const arrays = [];
@@ -110,7 +155,10 @@ export const renderChartTool = defineTool({
         "is applied automatically. Aggregates only: at most " +
         MAX_DATA_POINTS + " inline data points (aggregate further if you " +
         "hit that). Inline values are scrubbed by masking like printed " +
-        "run_python output; prefer charting non-masked/aggregated columns."
+        "run_python output; prefer charting non-masked/aggregated columns. " +
+        "No network fields: `data.url`, a lookup transform's `from.data.url`, " +
+        "and image/link marks' `url`/`href` channels are all rejected — " +
+        "every value the chart shows must be inline in `data.values`."
       ),
       parameters: {
         type: "object",

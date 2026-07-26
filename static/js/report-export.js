@@ -221,7 +221,12 @@ function scriptFilename(call, index) {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 40) || "script";
-  return `scripts/${String(index + 1).padStart(2, "0")}_${call.name}_${slug}.${ext}`;
+  const safeName = String(call.name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40) || "tool";
+  return `scripts/${String(index + 1).padStart(2, "0")}_${safeName}_${slug}.${ext}`;
 }
 
 /**
