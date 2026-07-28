@@ -42,7 +42,7 @@ const saveBtnEl = document.getElementById("save-btn");
 const statusEl = document.getElementById("status-message");
 
 const BASE_URL_HINTS = {
-  openai: "Examples: https://api.openai.com/v1 · http://localhost:11434/v1 (Ollama) · http://localhost:1234/v1 (LM Studio)",
+  openai: "Examples: https://api.openai.com/v1 · http://localhost:11434/v1 (Ollama) · http://localhost:1234/v1 (LM Studio) · http://localhost:4000 (LiteLLM proxy)",
   anthropic: "Example: https://api.anthropic.com",
 };
 
